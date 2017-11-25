@@ -1,11 +1,11 @@
 ##############################################################################
 #                                                                            #
 #     University of Massachusetts Dartmouth  ECE 565 - Operating Systems     #
-#     Title: ROSConvoy.py   Authors: Dylan Z. Baker,                         #
+#     Title: ROSConvoyNode0.py   Authors: Dylan Z. Baker,                    #
 #     Description: This demo script facilitates communication for a robotic  #
 #          vehicle convoy over a ROS bus. It also handles the actuation of   #
 #          the driving motors for this vehicle.                              #
-#     Creation Date: 5/11/2017                   Last Modified: 5/11/2017    #
+#     Creation Date: 5/11/2017                   Last Modified: 25/11/2017   #
 #                                                                            #
 ##############################################################################
 
@@ -14,16 +14,8 @@
 import thread
 import time
 import rospy
+import math
 from std_msgs.msg import String
-
-
-# Last received status from the node most immediately in front of this one. This will
-#   be purged after 100 ms.
-lastReceivedStatus = "unset"
-# Current Velocity.
-currentVelocity = 0
-# Current Heading.
-currentHeading = 0.00
 
 
 # Publishes a formatted time-stamped message based on whether this node is moving,
@@ -48,32 +40,29 @@ def PublishMessage(message, topic):
 # Listens indefinitely for status messages on the bus. If it doesn't receive a message,
 #   it will go into a safe (stopping) mode and notify the nodes in back until it begins
 #   receiving status again.
-def ListenForMessages():
+def PublishStatusMessages():
+	global lastReceivedStatus
+	global currentVelocity
+	global currentHeading
+	
 	while True:
 		time.sleep(0.05)	# Updates every 50 ms.
-		lastMsgFields = lastReceivedStatus.split("|")
-		if (float(lastMsgFields[0]) - rospy.get_time) > 0.1:
-			lastReceivedStatus = "unset"
-		
-		if lastReceivedStatus == "unset":
-			// Enter Safe Mode.
-			EnterSafeMode()
-		else:
-			// Apply velocity to motors.
+		PublishStatus(1, 9.8, 0)
 
 
 # Handles Safe Mode. When in this mode, the car will safely come to a stop and notify all
 #   cars behind it. If successful communication is resumed with the nodes in front of it,
 #   Safe Mode will be exited.
 def EnterSafeMode():
-	// Entering safe mode. Send Safe Mode Message, along with
-	//   status.
+	global lastReceivedStatus
+	# Entering safe mode. Send Safe Mode Message, along with
+	#   status.
 	PublishMessage("SAFEON", 'carconvoy0')
 	while lastReceivedStatus == "unset":
-		// Slow down.
+		# Slow down.
 		PublishStatus(0, currentVelocity, currentHeading)
 		time.sleep(0.01)
-	// Out of safe mode. Send Safe Mode Off Message. TODO: Will need to verify receipt.
+	# Out of safe mode. Send Safe Mode Off Message. TODO: Will need to verify receipt.
 	PublishMessage("SAFEOFF", 'carconvoy0')
 
 
@@ -81,10 +70,13 @@ def EnterSafeMode():
 #   accordingly. Otherwise, it will store the message in lastReceivedStatus, for the
 #   listening thread to handle.
 def ProcessMessage(data):
+	global lastReceivedStatus
 	if data == "SAFEON":
-		// Handle safe mode.
-	elif data == SAFEOFF:
-		// Handle exiting safe mode.
+		# Handle safe mode.
+		x = 1
+	elif data == "SAFEOFF":
+		# Handle exiting safe mode.
+		x = 1
 	else:
 		lastReceivedStatus = data
 
@@ -98,9 +90,20 @@ def InitializeNode(name):
 #   Primary car.
 if __name__ == '__main__':
 	try:
-		InitializeNode('convoynode0')
+		# Last received status from the node most immediately in front of this one. This will
+		#   be purged after 100 ms.
+		global lastReceivedStatus
+		lastReceivedStatus = "unset"
+		# Current Velocity
+		global currentVelocity
+		currentVelocity = 0
+		# Current Heading
+		global currentHeading
+		currentHeading = 0.00
 		
-		thread.start_new_thread(ListenForMessages)
+		InitializeNode('convoynode0')
+				
+		thread.start_new_thread(PublishStatusMessages, ())
 		
 		rospy.Subscriber('carconvoy0', String, ProcessMessage)
 		
