@@ -1,11 +1,11 @@
 ##############################################################################
 #                                                                            #
 #     University of Massachusetts Dartmouth  ECE 565 - Operating Systems     #
-#     Title: ROSConvoyNode0.py   Authors: Dylan Z. Baker,                    #
+#     Title: ROSConvoyNode0.py   Authors: Dylan Z. Baker, George Haddad      #
 #     Description: This demo script facilitates communication for a robotic  #
 #          vehicle convoy over a ROS bus. It also handles the actuation of   #
 #          the driving motors for this vehicle.                              #
-#     Creation Date: 5/11/2017                   Last Modified: 25/11/2017   #
+#     Creation Date: 5/11/2017                   Last Modified: 26/11/2017   #
 #                                                                            #
 ##############################################################################
 
@@ -15,6 +15,8 @@ import thread
 import time
 import rospy
 import math
+import RPi.GPIO as GPIO
+import time
 from std_msgs.msg import String
 
 
@@ -45,9 +47,65 @@ def PublishStatusMessages():
 	global currentVelocity
 	global currentHeading
 	
-	while True:
-		time.sleep(0.05)	# Updates every 50 ms.
-		PublishStatus(1, 9.8, 0)
+	GPIO.setmode(GPIO.BCM)
+
+	#setup for ultrasonic sensor/motor
+	TRIG = 23 
+	ECHO = 24
+	GPIO.setup(TRIG,GPIO.OUT)
+	GPIO.setup(ECHO,GPIO.IN)
+	GPIO.setup(27, GPIO.OUT)
+
+	p = GPIO.PWM(27,100)#(motor pin,frequency)
+	p.start(0)
+
+	GPIO.output(TRIG,False)
+
+	time.sleep(2)
+	
+	#car starts to move in this try statment
+	try:
+		while True: #begin ultrasonic sensor read
+			GPIO.output(TRIG, True)
+			time.sleep(0.00001)
+			GPIO.output(TRIG, False)
+
+			while GPIO.input(ECHO)==0:
+				pulse_start = time.time()
+
+			while GPIO.input(ECHO)==1:
+				pulse_end = time.time()
+
+			pulse_duration = pulse_end - pulse_start
+
+			distance = pulse_duration * 17150
+
+			distance = round(distance, 2) #distance in centimeters
+			if distance <= 40: #if object infront of car is 40 cm or less away then go to slow stop
+				# Not moving, speed of 0, heading of 0.
+				PublishStatus(0, 0, 0)
+				for i in range(100):#decelerate
+					p.ChangeDutyCycle(100 - i)
+					time.sleep(0.02)
+				break
+			else:
+				# Is moving, speed of 1, heading of 0.
+				PublishStatus(1, 1, 0)
+				p.ChangeDutyCycle(100)#continue high speed
+				
+			print("Distance:",distance,"cm")#output distance
+
+			time.sleep(.1)
+		print("done")#car stopped
+        
+except KeyboardInterrupt:
+    p.stop()
+    GPIO.cleanup()
+
+	# Uncomment to test basic publishing functionality.
+	#while True:
+	#	time.sleep(0.05)	# Updates every 50 ms.
+	#	PublishStatus(1, 9.8, 0)
 
 
 # Handles Safe Mode. When in this mode, the car will safely come to a stop and notify all

@@ -61,11 +61,18 @@ def ListenForMessages():
 		if 0:
 			x = 1
 		else:
+			
 			# Apply velocity to motors.
+			isMoving = lastMsgFields[1]
 			currentVelocity = float(lastMsgFields[2])
 			currentHeading = float(lastMsgFields[3])
 			print "Current Velocity is " + str(currentVelocity)
 			print "Current Heading is " + str(currentHeading)
+			
+			if isMoving == "1":
+				# >>>>> MOVE <<<<<
+			else:
+				# >>>>> DON'T MOVE <<<<<
 
 
 # Handles Safe Mode. When in this mode, the car will safely come to a stop and notify all
