@@ -2,7 +2,7 @@ import RPi.GPIO as GPIO
 import time
 GPIO.setmode(GPIO.BCM)
 
-#Pin setup for ultrasonic sensor
+#setup for ultrasonic sensor/motor
 TRIG = 23 
 ECHO = 24
 GPIO.setup(TRIG,GPIO.OUT)
@@ -17,7 +17,8 @@ GPIO.output(TRIG,False)
 
 
 time.sleep(2)
-    
+
+#car starts to move in this try statment
 try:
     while True: #begin ultrasonic sensor read
         GPIO.output(TRIG, True)
